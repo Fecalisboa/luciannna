@@ -1,9 +1,8 @@
-streamlit==1.33.0
-requests>=2.31.0 
-
-langchain==0.1.13
-langchain-community==0.0.31
-pydantic==1.9.0
-duckduckgo-search
+streamlit==1.22.0
+requests==2.31.0
+cohere==4.2.1
+langchain==0.0.87
+langchain-community==0.0.2
 langchain-cohere==0.0.1
+
 
