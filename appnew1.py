@@ -8,7 +8,7 @@ import requests
 import streamlit as st  
 
 # Para criação e execução de agentes conversacionais
-from langchain.agents import ConversationalAgent, AgentExecutor  
+#from langchain.agents import ConversationalAgent, AgentExecutor  
 
 # Callback para interação com a interface do Streamlit
 from langchain_community.callbacks import StreamlitCallbackHandler  
