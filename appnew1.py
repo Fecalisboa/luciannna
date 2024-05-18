@@ -8,7 +8,7 @@ import requests
 import streamlit as st  
 
 # Para criação e execução de agentes conversacionais
-#from langchain.agents import ConversationalAgent, AgentExecutor  
+from langchain.agents import ConversationalChatAgent, AgentExecutor  
 
 # Callback para interação com a interface do Streamlit
 from langchain_community.callbacks import StreamlitCallbackHandler  
@@ -83,7 +83,7 @@ memory = ConversationBufferMemory(chat_memory=msgs,
 # Verificação para limpar o histórico de mensagens ou iniciar a conversa
 if len(msgs.messages) == 0 or st.sidebar.button("Reset", key="reset_button"):
     msgs.clear()
-    msgs.add_ai_message("Sou sua Assistente Jurídica, em que posso ajudar?")
+    msgs.add_ai_message("Sou sua Assitente Jurídica, em que posso ajudar?")
     st.session_state.steps = {}
 
 # Definição de avatares para os participantes da conversa
@@ -135,7 +135,7 @@ def ia_chat():
             mecanismo_busca = [DuckDuckGoSearchRun(name="Search")]
             
             # Criação do agente conversacional com a ferramenta de busca
-            chat_dsa_agent = ConversationalAgent.from_llm_and_tools(llm=llm, tools=mecanismo_busca)
+            chat_dsa_agent = ConversationalChatAgent.from_llm_and_tools(llm=llm, tools=mecanismo_busca)
             
             # Executor para o agente, incluindo memória e tratamento de erros
             executor = AgentExecutor.from_agent_and_tools(agent=chat_dsa_agent,
@@ -193,4 +193,5 @@ if option == "IA - CHAT":
     ia_chat()
 elif option == "IA - Docs":
     ia_docs()
+
 
