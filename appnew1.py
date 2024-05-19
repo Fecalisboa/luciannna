@@ -47,7 +47,7 @@ cohere_api_key = "OGY2ZCgZ4351TM0pXzRNeJLpw6o9GhyfWA3r05eW"
 
 # Adição de botões para diferentes funcionalidades
 st.sidebar.header("Escolha uma opção:")
-option = st.sidebar.radio("Opções", ["CHAT", "DOC"])
+option = st.sidebar.radio("Opções", ["IA - CHAT", "IA - Docs"])
 
 # Função para carregar dados do arquivo JSON
 def load_data(file_path):
@@ -116,6 +116,7 @@ for idx, msg in enumerate(msgs.messages):
         # Exibe o conteúdo da mensagem no chat
         st.write(msg.content)  
 
+# Função para verificar se a pergunta é jurídica
 # Função para verificar se a pergunta é jurídica
 def is_legal_question(question):
     legal_keywords = ["lei", "contrato", "jurídico", "advogado", "justiça", "processo", "direito", "tribunal", "artigo", "bom dia", "boa tarde", "boa noite", "oi", "olá"]
