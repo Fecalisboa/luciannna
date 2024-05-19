@@ -1,9 +1,6 @@
 # Pacote para manipulação dos dados em formato JSON
 import json
 
-# Pacote para requisições
-import requests
-
 # Framework para criação de aplicações web
 import streamlit as st  
 
@@ -80,11 +77,24 @@ memory = ConversationBufferMemory(chat_memory=msgs,
                                   memory_key="chat_history", 
                                   output_key="output")
 
-# Verificação para limpar o histórico de mensagens ou iniciar a conversa
-if len(msgs.messages) == 0 or st.sidebar.button("Reset", key="reset_button"):
+# Função para resetar o chat
+def reset_chat():
     msgs.clear()
     msgs.add_ai_message("Sou sua Assistente Jurídica, em que posso ajudar?")
     st.session_state.steps = {}
+    st.experimental_rerun()
+
+# Adição do botão de reset e verificação do estado
+if st.sidebar.button("Reset", key="reset_button"):
+    reset_chat()
+
+# Verificação para iniciar a conversa se o histórico estiver vazio
+if len(msgs.messages) == 0:
+    msgs.add_ai_message("Sou sua Assistente Jurídica, em que posso ajudar?")
+    st.session_state.steps = {}
+
+# Campo de entrada para novas mensagens do usuário
+prompt = st.text_input("Digite uma pergunta para começar!", key="chat_input")
 
 # Definição de avatares para os participantes da conversa
 avatars = {"human": "user", "ai": "assistant"}
@@ -110,9 +120,6 @@ for idx, msg in enumerate(msgs.messages):
                 st.write(f"**{step[1]}**")  
         # Exibe o conteúdo da mensagem no chat
         st.write(msg.content)  
-
-# Campo de entrada para novas mensagens do usuário
-prompt = st.text_input("Digite uma pergunta para começar!", key="chat_input")
 
 # Função para verificar se a pergunta é jurídica
 def is_legal_question(question):
