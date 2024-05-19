@@ -47,7 +47,7 @@ cohere_api_key = "OGY2ZCgZ4351TM0pXzRNeJLpw6o9GhyfWA3r05eW"
 
 # Adição de botões para diferentes funcionalidades
 st.sidebar.header("Escolha uma opção:")
-option = st.sidebar.radio("Opções", ["CHAT", "Docs"])
+option = st.sidebar.radio("Opções", ["IA - CHAT", "IA - Docs"])
 
 # Função para carregar dados do arquivo JSON
 def load_data(file_path):
@@ -159,6 +159,42 @@ def ia_chat():
 
             # Adicionar a resposta da IA ao histórico de mensagens
             msgs.add_ai_message(response)
+
+            # Salvar a pergunta e resposta no arquivo JSON
+            chat_history.append({"role": "user", "content": prompt})
+            chat_history.append({"role": "ai", "content": response})
+            save_data(json_file_path, chat_history)
+
+            # Exibir a resposta do assistente
+            with st.chat_message("lucIAna"):
+                st.write("lucIAna")  # Adiciona o nome abaixo do avatar
+                st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)  
+                response = executor(prompt, callbacks=[st_cb])
+                st.write(response["output"])
+                # Armazenamento dos passos intermediários
+                st.session_state.steps[str(len(msgs.messages) - 1)] = response["intermediate_steps"]  
+        else:
+            # Resposta para perguntas não jurídicas
+            response = "Desculpe, fui treinada apenas para responder perguntas sobre temas jurídicos."
+            msgs.add_ai_message(response)
+            chat_history.append({"role": "user", "content": prompt})
+            chat_history.append({"role": "ai", "content": response})
+            save_data(json_file_path, chat_history)
+            
+            with st.chat_message("lucIAna"):
+                st.write("lucIAna")  # Adiciona o nome abaixo do avatar
+                st.write(response)
+
+# Função para IA - Docs
+def ia_docs():
+    st.write("Função para resumir documentos ainda em desenvolvimento.")
+
+# Lógica para escolher a função baseada na opção selecionada
+if option == "IA - CHAT":
+    ia_chat()
+elif option == "IA - Docs":
+    ia_docs()
+
 
             # Salvar a pergunta e resposta no arquivo JSON
             chat_history.append({"role": "user", "content": prompt})
