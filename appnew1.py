@@ -116,7 +116,7 @@ for idx, msg in enumerate(msgs.messages):
 
 # Função para verificar se a pergunta é jurídica
 def is_legal_question(question):
-    legal_keywords = ["lei", "contrato", "jurídico", "advogado", "justiça", "processo", "direito", "tribunal"]
+    legal_keywords = ["lei", "contrato", "jurídico", "advogado", "justiça", "processo", "direito", "tribunal","Saudações","Olá","Bom dia"]
     return any(keyword in question.lower() for keyword in legal_keywords)
 
 # Função para o chat da IA
