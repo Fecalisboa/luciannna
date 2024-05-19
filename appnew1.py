@@ -47,7 +47,7 @@ cohere_api_key = "OGY2ZCgZ4351TM0pXzRNeJLpw6o9GhyfWA3r05eW"
 
 # Adição de botões para diferentes funcionalidades
 st.sidebar.header("Escolha uma opção:")
-option = st.sidebar.radio("Opções", ["IA - CHAT", "IA - Docs"])
+option = st.sidebar.radio("Opções", ["CHAT", "Docs"])
 
 # Função para carregar dados do arquivo JSON
 def load_data(file_path):
