@@ -1,6 +1,9 @@
 # Pacote para manipulação dos dados em formato JSON
 import json
 
+# Pacote para requisições
+import requests
+
 # Framework para criação de aplicações web
 import streamlit as st  
 
@@ -44,7 +47,7 @@ cohere_api_key = "OGY2ZCgZ4351TM0pXzRNeJLpw6o9GhyfWA3r05eW"
 
 # Adição de botões para diferentes funcionalidades
 st.sidebar.header("Escolha uma opção:")
-option = st.sidebar.radio("Opções", ["lucIAna - CHAT", "lucIAna - Docs"])
+option = st.sidebar.radio("Opções", ["IA - CHAT", "IA - Docs"])
 
 # Função para carregar dados do arquivo JSON
 def load_data(file_path):
@@ -77,46 +80,54 @@ memory = ConversationBufferMemory(chat_memory=msgs,
                                   memory_key="chat_history", 
                                   output_key="output")
 
-# Função para resetar o chat
-def reset_chat():
+# Verificação para limpar o histórico de mensagens ou iniciar a conversa
+if len(msgs.messages) == 0 or st.sidebar.button("Reset", key="reset_button"):
     msgs.clear()
-    msgs.add_ai_message("Sou sua Assistente Jurídica, em que posso ajudar?")
-    st.session_state.steps = {}
-    st.experimental_rerun()
-
-# Adição do botão de reset e verificação do estado
-if st.sidebar.button("Reset", key="reset_button"):
-    reset_chat()
-
-# Verificação para iniciar a conversa se o histórico estiver vazio
-if len(msgs.messages) == 0:
-    msgs.add_ai_message("Sou sua Assistente Jurídica, em que posso ajudar?")
+    msgs.add_ai_message("Sou sua Assitente Jurídica, em que posso ajudar?")
     st.session_state.steps = {}
 
 # Definição de avatares para os participantes da conversa
 avatars = {"human": "user", "ai": "assistant"}
 names = {"human": "Você", "ai": "lucIAna"}
 
+# Itera sobre cada mensagem no histórico de mensagens
+for idx, msg in enumerate(msgs.messages):  
+
+    # Cria uma mensagem no chat com o avatar correspondente ao tipo de usuário (humano ou IA)
+    with st.chat_message(avatars[msg.type]):  
+        st.write(names[msg.type])  # Adiciona o nome abaixo do avatar
+
+        # Itera sobre os passos armazenados para cada mensagem, se houver
+        for step in st.session_state.steps.get(str(idx), []):  
+
+            # Se o passo atual indica uma exceção, pula para o próximo passo
+            if step[0].tool == "_Exception":  
+                continue
+
+            # Cria um expander para cada ferramenta usada na resposta, mostrando o input
+            with st.expander(f"✅ **{step[0].tool}**: {step[0].tool_input}"): 
+
+                # Exibe o log de execução da ferramenta 
+                st.write(step[0].log)  
+
+                # Exibe o resultado da execução da ferramenta
+                st.write(f"**{step[1]}**")  
+
+        # Exibe o conteúdo da mensagem no chat
+        st.write(msg.content)  
+
 # Função para verificar se a pergunta é jurídica
 def is_legal_question(question):
-    legal_keywords = ["lei", "contrato", "jurídico", "advogado", "justiça", "processo", "direito", "tribunal"]
+    legal_keywords = ["lei", "contrato", "jurídico", "advogado", "justiça", "processo", "direito", "tribunal","Artigo","Bom dia", "boa tarde", "boa noite","Oi","Olá"]
     return any(keyword in question.lower() for keyword in legal_keywords)
-
-# Função para verificar se a mensagem é uma saudação
-def is_greeting(message):
-    greetings = ["oi", "olá", "bom dia", "boa tarde", "boa noite"]
-    return any(greeting in message.lower() for greeting in greetings)
 
 # Função para o chat da IA
 def ia_chat():
-    prompt = st.text_input("Digite uma pergunta para começar!", key="chat_input")
-    
-    if prompt:
+    # Campo de entrada para novas mensagens do usuário
+    if prompt := st.chat_input(placeholder="Digite uma pergunta para começar!", key="chat_input"):
         st.chat_message("user").write(prompt)
         
-        if is_greeting(prompt):
-            response = "Olá! Como posso ajudar você hoje?"
-        elif is_legal_question(prompt):
+        if is_legal_question(prompt):
             # Configuração do modelo de linguagem da Cohere
             llm = ChatCohere(cohere_api_key=cohere_api_key)
             
@@ -144,20 +155,33 @@ def ia_chat():
 
             # Execução do chain com a entrada do usuário
             response = chain.invoke({"input": prompt})
-        else:
-            response = "Desculpe, fui treinada apenas para responder perguntas sobre temas jurídicos."
-        
-        msgs.add_ai_message(response)
-        chat_history.append({"role": "user", "content": prompt})
-        chat_history.append({"role": "ai", "content": response})
-        save_data(json_file_path, chat_history)
 
-        # Exibir a resposta do assistente
-        with st.chat_message("lucIAna"):
-            st.write("lucIAna")  # Adiciona o nome abaixo do avatar
-            if isinstance(response, dict) and "output" in response:
+            # Adicionar a resposta da IA ao histórico de mensagens
+            msgs.add_ai_message(response)
+
+            # Salvar a pergunta e resposta no arquivo JSON
+            chat_history.append({"role": "user", "content": prompt})
+            chat_history.append({"role": "ai", "content": response})
+            save_data(json_file_path, chat_history)
+
+            # Exibir a resposta do assistente
+            with st.chat_message("lucIAna"):
+                st.write("lucIAna")  # Adiciona o nome abaixo do avatar
+                st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)  
+                response = executor(prompt, callbacks=[st_cb])
                 st.write(response["output"])
-            else:
+                # Armazenamento dos passos intermediários
+                st.session_state.steps[str(len(msgs.messages) - 1)] = response["intermediate_steps"]  
+        else:
+            # Resposta para perguntas não jurídicas
+            response = "Desculpe, fui treinada apenas para responder perguntas sobre temas jurídicos."
+            msgs.add_ai_message(response)
+            chat_history.append({"role": "user", "content": prompt})
+            chat_history.append({"role": "ai", "content": response})
+            save_data(json_file_path, chat_history)
+            
+            with st.chat_message("lucIAna"):
+                st.write("lucIAna")  # Adiciona o nome abaixo do avatar
                 st.write(response)
 
 # Função para IA - Docs
@@ -165,14 +189,9 @@ def ia_docs():
     st.write("Função para resumir documentos ainda em desenvolvimento.")
 
 # Lógica para escolher a função baseada na opção selecionada
-if option == "lucIAna - CHAT":
+if option == "IA - CHAT":
     ia_chat()
-elif option == "lucIAna - Docs":
+elif option == "IA - Docs":
     ia_docs()
 
-# Exibir todas as mensagens do histórico
-for idx, msg in enumerate(msgs.messages):  
-    with st.chat_message(avatars[msg.type]):  
-        st.write(names[msg.type])  
-        st.write(msg.content)
 
