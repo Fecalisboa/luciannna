@@ -83,40 +83,36 @@ memory = ConversationBufferMemory(chat_memory=msgs,
 # Verificação para limpar o histórico de mensagens ou iniciar a conversa
 if len(msgs.messages) == 0 or st.sidebar.button("Reset", key="reset_button"):
     msgs.clear()
-    msgs.add_ai_message("Sou sua Assitente Jurídica, em que posso ajudar?")
+    msgs.add_ai_message("Sou sua Assistente Jurídica, em que posso ajudar?")
     st.session_state.steps = {}
 
 # Definição de avatares para os participantes da conversa
-avatars = {"human": "user", "ai": "assistant"}
+avatars = {"human": "user", "ai": "👩‍🎤"}
 names = {"human": "Você", "ai": "lucIAna"}
+
 
 # Itera sobre cada mensagem no histórico de mensagens
 for idx, msg in enumerate(msgs.messages):  
-
     # Cria uma mensagem no chat com o avatar correspondente ao tipo de usuário (humano ou IA)
     with st.chat_message(avatars[msg.type]):  
         st.write(names[msg.type])  # Adiciona o nome abaixo do avatar
 
         # Itera sobre os passos armazenados para cada mensagem, se houver
         for step in st.session_state.steps.get(str(idx), []):  
-
             # Se o passo atual indica uma exceção, pula para o próximo passo
             if step[0].tool == "_Exception":  
                 continue
 
             # Cria um expander para cada ferramenta usada na resposta, mostrando o input
             with st.expander(f"✅ **{step[0].tool}**: {step[0].tool_input}"): 
-
                 # Exibe o log de execução da ferramenta 
                 st.write(step[0].log)  
-
                 # Exibe o resultado da execução da ferramenta
                 st.write(f"**{step[1]}**")  
 
         # Exibe o conteúdo da mensagem no chat
         st.write(msg.content)  
 
-# Função para verificar se a pergunta é jurídica
 # Função para verificar se a pergunta é jurídica
 def is_legal_question(question):
     legal_keywords = ["lei", "contrato", "jurídico", "advogado", "justiça", "processo", "direito", "tribunal", "artigo", "bom dia", "boa tarde", "boa noite", "oi", "olá"]
@@ -166,7 +162,7 @@ def ia_chat():
             save_data(json_file_path, chat_history)
 
             # Exibir a resposta do assistente
-            with st.chat_message("lucIAna"):
+            with st.chat_message("🤖"):
                 st.write("lucIAna")  # Adiciona o nome abaixo do avatar
                 st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)  
                 response = executor(prompt, callbacks=[st_cb])
@@ -181,7 +177,7 @@ def ia_chat():
             chat_history.append({"role": "ai", "content": response})
             save_data(json_file_path, chat_history)
             
-            with st.chat_message("lucIAna"):
+            with st.chat_message("🤖"):
                 st.write("lucIAna")  # Adiciona o nome abaixo do avatar
                 st.write(response)
 
@@ -194,3 +190,4 @@ if option == "IA - CHAT":
     ia_chat()
 elif option == "IA - Docs":
     ia_docs()
+
