@@ -83,7 +83,7 @@ memory = ConversationBufferMemory(chat_memory=msgs,
 # Verificação para limpar o histórico de mensagens ou iniciar a conversa
 if len(msgs.messages) == 0 or st.sidebar.button("Reset", key="reset_button"):
     msgs.clear()
-    msgs.add_ai_message("Sou sua Assitente Jurídica, em que posso ajudar?")
+    msgs.add_ai_message("Sou sua Assistente Jurídica, em que posso ajudar?")
     st.session_state.steps = {}
 
 # Definição de avatares para os participantes da conversa
@@ -124,7 +124,9 @@ def is_legal_question(question):
 # Função para o chat da IA
 def ia_chat():
     # Campo de entrada para novas mensagens do usuário
-    if prompt := st.chat_input(placeholder="Digite uma pergunta para começar!", key="chat_input"):
+    prompt = st.text_input("Digite uma pergunta para começar!", key="chat_input")
+
+    if prompt:
         st.chat_message("user").write(prompt)
         
         if is_legal_question(prompt):
@@ -189,10 +191,11 @@ def ia_docs():
     st.write("Função para resumir documentos ainda em desenvolvimento.")
 
 # Lógica para escolher a função baseada na opção selecionada
-if option == "IA - CHAT":
+if option == "lucIAna - CHAT":
     ia_chat()
-elif option == "IA - Docs":
+elif option == "lucIAna - Docs":
     ia_docs()
+
 
 
 
