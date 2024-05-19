@@ -86,33 +86,31 @@ if len(msgs.messages) == 0 or st.sidebar.button("Reset", key="reset_button"):
     msgs.add_ai_message("Sou sua Assistente Jurídica, em que posso ajudar?")
     st.session_state.steps = {}
 
+# Campo de entrada para novas mensagens do usuário
+prompt = st.text_input("Digite uma pergunta para começar!", key="chat_input")
+
 # Definição de avatares para os participantes da conversa
 avatars = {"human": "user", "ai": "assistant"}
 names = {"human": "Você", "ai": "lucIAna"}
 
 # Itera sobre cada mensagem no histórico de mensagens
 for idx, msg in enumerate(msgs.messages):  
-
     # Cria uma mensagem no chat com o avatar correspondente ao tipo de usuário (humano ou IA)
     with st.chat_message(avatars[msg.type]):  
         st.write(names[msg.type])  # Adiciona o nome abaixo do avatar
 
         # Itera sobre os passos armazenados para cada mensagem, se houver
         for step in st.session_state.steps.get(str(idx), []):  
-
             # Se o passo atual indica uma exceção, pula para o próximo passo
             if step[0].tool == "_Exception":  
                 continue
 
             # Cria um expander para cada ferramenta usada na resposta, mostrando o input
             with st.expander(f"✅ **{step[0].tool}**: {step[0].tool_input}"): 
-
                 # Exibe o log de execução da ferramenta 
                 st.write(step[0].log)  
-
                 # Exibe o resultado da execução da ferramenta
                 st.write(f"**{step[1]}**")  
-
         # Exibe o conteúdo da mensagem no chat
         st.write(msg.content)  
 
@@ -123,9 +121,6 @@ def is_legal_question(question):
 
 # Função para o chat da IA
 def ia_chat():
-    # Campo de entrada para novas mensagens do usuário
-    prompt = st.text_input("Digite uma pergunta para começar!", key="chat_input")
-
     if prompt:
         st.chat_message("user").write(prompt)
         
@@ -195,7 +190,3 @@ if option == "lucIAna - CHAT":
     ia_chat()
 elif option == "lucIAna - Docs":
     ia_docs()
-
-
-
-
