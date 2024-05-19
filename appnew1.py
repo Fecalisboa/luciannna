@@ -93,9 +93,6 @@ if len(msgs.messages) == 0:
     msgs.add_ai_message("Sou sua Assistente Jurídica, em que posso ajudar?")
     st.session_state.steps = {}
 
-# Campo de entrada para novas mensagens do usuário
-prompt = st.text_input("Digite uma pergunta para começar!", key="chat_input")
-
 # Definição de avatares para os participantes da conversa
 avatars = {"human": "user", "ai": "assistant"}
 names = {"human": "Você", "ai": "lucIAna"}
@@ -121,6 +118,10 @@ for idx, msg in enumerate(msgs.messages):
         # Exibe o conteúdo da mensagem no chat
         st.write(msg.content)  
 
+# Campo de entrada para novas mensagens do usuário
+def input_prompt():
+    return st.text_input("Digite uma pergunta para começar!", key="chat_input")
+
 # Função para verificar se a pergunta é jurídica
 def is_legal_question(question):
     legal_keywords = ["lei", "contrato", "jurídico", "advogado", "justiça", "processo", "direito", "tribunal"]
@@ -132,7 +133,7 @@ def is_greeting(message):
     return any(greeting in message.lower() for greeting in greetings)
 
 # Função para o chat da IA
-def ia_chat():
+def ia_chat(prompt):
     if prompt:
         st.chat_message("user").write(prompt)
         
@@ -209,6 +210,7 @@ def ia_docs():
 
 # Lógica para escolher a função baseada na opção selecionada
 if option == "lucIAna - CHAT":
-    ia_chat()
+    prompt = input_prompt()
+    ia_chat(prompt)
 elif option == "lucIAna - Docs":
     ia_docs()
