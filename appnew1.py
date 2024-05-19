@@ -86,9 +86,6 @@ if len(msgs.messages) == 0 or st.sidebar.button("Reset", key="reset_button"):
     msgs.add_ai_message("Sou sua Assistente Jurídica, em que posso ajudar?")
     st.session_state.steps = {}
 
-# Campo de entrada para novas mensagens do usuário
-prompt = st.text_input("Digite uma pergunta para começar!", key="chat_input")
-
 # Definição de avatares para os participantes da conversa
 avatars = {"human": "user", "ai": "assistant"}
 names = {"human": "Você", "ai": "lucIAna"}
@@ -114,17 +111,35 @@ for idx, msg in enumerate(msgs.messages):
         # Exibe o conteúdo da mensagem no chat
         st.write(msg.content)  
 
+# Campo de entrada para novas mensagens do usuário
+prompt = st.text_input("Digite uma pergunta para começar!", key="chat_input")
+
 # Função para verificar se a pergunta é jurídica
 def is_legal_question(question):
-    legal_keywords = ["lei", "contrato", "jurídico", "advogado", "justiça", "processo", "direito", "tribunal","Saudações","Olá","Bom dia"]
+    legal_keywords = ["lei", "contrato", "jurídico", "advogado", "justiça", "processo", "direito", "tribunal"]
     return any(keyword in question.lower() for keyword in legal_keywords)
+
+# Função para verificar se a mensagem é uma saudação
+def is_greeting(message):
+    greetings = ["oi", "olá", "bom dia", "boa tarde", "boa noite"]
+    return any(greeting in message.lower() for greeting in greetings)
 
 # Função para o chat da IA
 def ia_chat():
     if prompt:
         st.chat_message("user").write(prompt)
         
-        if is_legal_question(prompt):
+        if is_greeting(prompt):
+            response = "Olá! Como posso ajudar você hoje?"
+            msgs.add_ai_message(response)
+            chat_history.append({"role": "user", "content": prompt})
+            chat_history.append({"role": "ai", "content": response})
+            save_data(json_file_path, chat_history)
+            
+            with st.chat_message("lucIAna"):
+                st.write("lucIAna")  # Adiciona o nome abaixo do avatar
+                st.write(response)
+        elif is_legal_question(prompt):
             # Configuração do modelo de linguagem da Cohere
             llm = ChatCohere(cohere_api_key=cohere_api_key)
             
