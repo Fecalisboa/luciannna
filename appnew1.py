@@ -95,7 +95,7 @@ memory = ConversationBufferMemory(chat_memory=msgs,
                                   output_key="output")
 
 # Verificação para limpar o histórico de mensagens ou iniciar a conversa
-if len(msgs.messages) == 0 ou st.sidebar.button("Reset", key="reset_button"):
+if len(msgs.messages) == 0 or st.sidebar.button("Reset", key="reset_button"):
     msgs.clear()
     msgs.add_ai_message("Sou sua Assistente Jurídica, em que posso ajudar?")
     st.session_state.steps = {}
@@ -200,6 +200,7 @@ def ia_docs():
     
     # Função para carregar e processar o documento PDF
     def load_doc(list_file_obj, chunk_size, chunk_overlap):
+        st.write("Loading documents...")
         loaders = [PyPDFLoader(file.name) for file in list_file_obj]
         pages = []
         for loader in loaders:
@@ -215,7 +216,7 @@ def ia_docs():
         return vectordb
 
     # Função para inicializar a base de dados vetorial
-    def initialize_database(list_file_obj, progress=st.progress):
+    def initialize_database(list_file_obj):
         doc_splits = load_doc(list_file_obj, chunk_size=600, chunk_overlap=40)
         vector_db = create_db(doc_splits)
         return vector_db
