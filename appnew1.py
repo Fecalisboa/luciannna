@@ -199,9 +199,8 @@ def ia_docs():
     st.write("Carregue e processe seus documentos PDF.")
     
     # Função para carregar e processar o documento PDF
-    def load_doc(list_file_obj, chunk_size, chunk_overlap):
-        loaders = []
-        loaders = [PyPDFLoader(x) for x in list_file_path]
+    def load_doc(list_file_path, chunk_size, chunk_overlap):
+        loaders = [PyPDFLoader(file) for file in list_file_path]
         pages = []
         for loader in loaders:
             pages.extend(loader.load())
@@ -216,8 +215,9 @@ def ia_docs():
         return vectordb
 
     # Função para inicializar a base de dados vetorial
-    def initialize_database(list_file_obj, chunk_size, chunk_overlap):
-        doc_splits = load_doc(list_file_obj, chunk_size, chunk_overlap)
+    def initialize_database(list_file_obj, progress=st.progress):
+        list_file_path = list_file_obj
+        doc_splits = load_doc(list_file_path, chunk_size=600, chunk_overlap=40)
         vector_db = create_db(doc_splits)
         return vector_db
 
@@ -257,18 +257,10 @@ def ia_docs():
     uploaded_files = st.file_uploader("Upload your PDF documents (single or multiple)", type="pdf", accept_multiple_files=True)
     chunk_size = st.slider("Chunk size", 100, 1000, 600, 20)
     chunk_overlap = st.slider("Chunk overlap", 10, 200, 40, 10)
-    # Initialize database
-    def initialize_database(list_file_obj, progress=gr.Progress()):
-        # Create a list of documents (when valid)
-        list_file_path = [x.name for x in list_file_obj if x is not None]
-        # Load document and create splits
-        doc_splits = load_doc(list_file_path)
-        # Create or load vector database
-        vector_db = create_db(doc_splits)
-        return vector_db, "Database created!"
+
     if st.button("Generate vector database"):
         if uploaded_files:
-            vector_db = initialize_database(uploaded_files, chunk_size, chunk_overlap)
+            vector_db = initialize_database(uploaded_files)
             st.success("Vector database created successfully!")
 
             # Inicialização do LLM chain
