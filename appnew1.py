@@ -199,8 +199,11 @@ def ia_docs():
     st.write("Carregue e processe seus documentos PDF.")
     
     # Função para carregar e processar o documento PDF
-    def load_doc(list_file_path, chunk_size, chunk_overlap):
-        loaders = [PyPDFLoader(x) for x in list_file_path]
+    def load_doc(list_file_obj, chunk_size, chunk_overlap):
+        loaders = []
+        for file in list_file_obj:
+            with open(file.name, "rb") as f:
+                loaders.append(PyPDFLoader(f))
         pages = []
         for loader in loaders:
             pages.extend(loader.load())
@@ -216,8 +219,8 @@ def ia_docs():
 
     # Função para inicializar a base de dados vetorial
     def initialize_database(list_file_obj, chunk_size, chunk_overlap, progress=st.progress):
-        list_file_path = [x.name for x in list_file_obj if x is not None]
-        collection_name = create_collection_name(list_file_path[0])
+        list_file_path = [x for x in list_file_obj if x is not None]
+        collection_name = create_collection_name(list_file_path[0].name)
         doc_splits = load_doc(list_file_path, chunk_size, chunk_overlap)
         vector_db = create_db(doc_splits)
         return vector_db, collection_name, "Complete!"
@@ -295,5 +298,6 @@ if option == "IA - CHAT":
     ia_chat()
 elif option == "IA - Docs":
     ia_docs()
+
 
 
