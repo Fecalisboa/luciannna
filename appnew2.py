@@ -1,9 +1,6 @@
 # Pacote para manipulação dos dados em formato JSON
 import json
 
-# Pacote para requisições
-import requests
-
 # Framework para criação de aplicações web
 import streamlit as st  
 
@@ -31,6 +28,20 @@ from langchain_community.tools import DuckDuckGoSearchRun
 import warnings
 warnings.filterwarnings('ignore')
 
+# Pacotes para processamento de documentos PDF e criação de banco de dados vetorial
+import os
+from pathlib import Path
+import re
+from unidecode import unidecode
+from langchain_community.vectorstores import FAISS
+from langchain_community.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.chains import ConversationalRetrievalChain
+from langchain_community.embeddings import HuggingFaceEmbeddings 
+from langchain.chains import ConversationChain
+from langchain.memory import ConversationBufferMemory
+from langchain_community.llms import HuggingFaceEndpoint
+
 # Configuração do título da página
 st.set_page_config(page_title="lucIAna")
 
@@ -44,6 +55,9 @@ with col1:
 
 # Definição da chave de API da Cohere
 cohere_api_key = "OGY2ZCgZ4351TM0pXzRNeJLpw6o9GhyfWA3r05eW"
+
+# Obtenha o token da variável de ambiente
+hf_api_key = "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"
 
 # Adição de botões para diferentes funcionalidades
 st.sidebar.header("Escolha uma opção:")
@@ -81,7 +95,7 @@ memory = ConversationBufferMemory(chat_memory=msgs,
                                   output_key="output")
 
 # Verificação para limpar o histórico de mensagens ou iniciar a conversa
-if len(msgs.messages) == 0 or st.sidebar.button("Reset", key="reset_button"):
+if len(msgs.messages) == 0 ou st.sidebar.button("Reset", key="reset_button"):
     msgs.clear()
     msgs.add_ai_message("Sou sua Assistente Jurídica, em que posso ajudar?")
     st.session_state.steps = {}
@@ -89,7 +103,6 @@ if len(msgs.messages) == 0 or st.sidebar.button("Reset", key="reset_button"):
 # Definição de avatares para os participantes da conversa
 avatars = {"human": "user", "ai": "👩‍🎤"}
 names = {"human": "Você", "ai": "lucIAna"}
-
 
 # Itera sobre cada mensagem no histórico de mensagens
 for idx, msg in enumerate(msgs.messages):  
@@ -184,6 +197,98 @@ def ia_chat():
 # Função para IA - Docs
 def ia_docs():
     st.write("Função para resumir documentos ainda em desenvolvimento.")
+    
+    # Função para carregar e processar o documento PDF
+    def load_doc(list_file_path, chunk_size, chunk_overlap):
+        loaders = [PyPDFLoader(x) for x in list_file_path]
+        pages = []
+        for loader in loaders:
+            pages.extend(loader.load())
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        doc_splits = text_splitter.split_documents(pages)
+        return doc_splits
+
+    # Função para criar o banco de dados vetorial
+    def create_db(splits):
+        embeddings = HuggingFaceEmbeddings()
+        vectordb = FAISS.from_documents(splits, embeddings)
+        return vectordb
+
+    # Função para inicializar a base de dados vetorial
+    def initialize_database(list_file_obj, chunk_size, chunk_overlap, progress=st.progress):
+        list_file_path = [x.name for x in list_file_obj if x is not None]
+        collection_name = create_collection_name(list_file_path[0])
+        doc_splits = load_doc(list_file_path, chunk_size, chunk_overlap)
+        vector_db = create_db(doc_splits)
+        return vector_db, collection_name, "Complete!"
+
+    # Função para criar o nome da coleção
+    def create_collection_name(filepath):
+        collection_name = Path(filepath).stem
+        collection_name = collection_name.replace(" ", "-")
+        collection_name = unidecode(collection_name)
+        collection_name = re.sub('[^A-Za-z0-9]+', '-', collection_name)
+        collection_name = collection_name[:50]
+        if len(collection_name) < 3:
+            collection_name = collection_name + 'xyz'
+        if not collection_name[0].isalnum():
+            collection_name = 'A' + collection_name[1:]
+        if not collection_name[-1].isalnum():
+            collection_name = collection_name[:-1] + 'Z'
+        print('Filepath: ', filepath)
+        print('Collection name: ', collection_name)
+        return collection_name
+
+    # Função para inicializar o LLM chain usando Mistral v0.3 com a API da Hugging Face
+    def initialize_llmchain(llm_model, temperature, max_tokens, top_k, vector_db, progress=st.progress):
+        progress(0.1, "Initializing HF tokenizer...")
+        progress(0.5, "Initializing HF Hub...")
+
+        llm = HuggingFaceEndpoint(
+            repo_id=llm_model,
+            huggingfacehub_api_token=hf_api_key,
+            temperature=temperature,
+            max_new_tokens=max_tokens,
+            top_k=top_k,
+        )
+
+        progress(0.75, "Defining buffer memory...")
+        memory = ConversationBufferMemory(
+            memory_key="chat_history",
+            output_key='answer',
+            return_messages=True
+        )
+        retriever = vector_db.as_retriever()
+        progress(0.8, "Defining retrieval chain...")
+        qa_chain = ConversationalRetrievalChain.from_llm(
+            llm,
+            retriever=retriever,
+            chain_type="stuff", 
+            memory=memory,
+            return_source_documents=True,
+            verbose=False,
+        )
+        progress(0.9, "Done!")
+        return qa_chain
+
+    # Inicialização dos elementos de interface para upload e processamento de documentos PDF
+    uploaded_files = st.file_uploader("Upload your PDF documents (single or multiple)", type="pdf", accept_multiple_files=True)
+    chunk_size = st.slider("Chunk size", 100, 1000, 600, 20)
+    chunk_overlap = st.slider("Chunk overlap", 10, 200, 40, 10)
+
+    if st.button("Generate vector database"):
+        if uploaded_files:
+            vector_db, collection_name, status = initialize_database(uploaded_files, chunk_size, chunk_overlap)
+            st.success("Vector database created successfully!")
+
+            # Inicialização do LLM chain
+            llm_option = 1  # Índice para Mistral v0.3
+            llm_temperature = 0.7
+            max_tokens = 1024
+            top_k = 3
+
+            qa_chain = initialize_llmchain("mistralai/Mistral-7B-Instruct-v0.3", llm_temperature, max_tokens, top_k, vector_db)
+            st.success("LLM chain initialized successfully!")
 
 # Lógica para escolher a função baseada na opção selecionada
 if option == "IA - CHAT":
