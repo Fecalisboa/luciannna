@@ -95,7 +95,7 @@ memory = ConversationBufferMemory(chat_memory=msgs,
                                   output_key="output")
 
 # Verificação para limpar o histórico de mensagens ou iniciar a conversa
-if len(msgs.messages) == 0 ou st.sidebar.button("Reset", key="reset_button"):
+if len(msgs.messages) == 0 or st.sidebar.button("Reset", key="reset_button"):
     msgs.clear()
     msgs.add_ai_message("Sou sua Assistente Jurídica, em que posso ajudar?")
     st.session_state.steps = {}
@@ -196,7 +196,7 @@ def ia_chat():
 
 # Função para IA - Docs
 def ia_docs():
-    st.write("Função para resumir documentos ainda em desenvolvimento.")
+    st.write("Carregue e processe seus documentos PDF.")
     
     # Função para carregar e processar o documento PDF
     def load_doc(list_file_path, chunk_size, chunk_overlap):
@@ -295,4 +295,5 @@ if option == "IA - CHAT":
     ia_chat()
 elif option == "IA - Docs":
     ia_docs()
+
 
