@@ -202,8 +202,7 @@ def ia_docs():
     def load_doc(list_file_obj, chunk_size, chunk_overlap):
         loaders = []
         for file in list_file_obj:
-            with open(file.name, "rb") as f:
-                loaders.append(PyPDFLoader(f))
+            loaders.append(PyPDFLoader(file))
         pages = []
         for loader in loaders:
             pages.extend(loader.load())
@@ -218,29 +217,10 @@ def ia_docs():
         return vectordb
 
     # Função para inicializar a base de dados vetorial
-    def initialize_database(list_file_obj, chunk_size, chunk_overlap, progress=st.progress):
-        list_file_path = [x for x in list_file_obj if x is not None]
-        collection_name = create_collection_name(list_file_path[0].name)
-        doc_splits = load_doc(list_file_path, chunk_size, chunk_overlap)
+    def initialize_database(list_file_obj, chunk_size, chunk_overlap):
+        doc_splits = load_doc(list_file_obj, chunk_size, chunk_overlap)
         vector_db = create_db(doc_splits)
-        return vector_db, collection_name, "Complete!"
-
-    # Função para criar o nome da coleção
-    def create_collection_name(filepath):
-        collection_name = Path(filepath).stem
-        collection_name = collection_name.replace(" ", "-")
-        collection_name = unidecode(collection_name)
-        collection_name = re.sub('[^A-Za-z0-9]+', '-', collection_name)
-        collection_name = collection_name[:50]
-        if len(collection_name) < 3:
-            collection_name = collection_name + 'xyz'
-        if not collection_name[0].isalnum():
-            collection_name = 'A' + collection_name[1:]
-        if not collection_name[-1].isalnum():
-            collection_name = collection_name[:-1] + 'Z'
-        print('Filepath: ', filepath)
-        print('Collection name: ', collection_name)
-        return collection_name
+        return vector_db
 
     # Função para inicializar o LLM chain usando Mistral v0.3 com a API da Hugging Face
     def initialize_llmchain(llm_model, temperature, max_tokens, top_k, vector_db, progress=st.progress):
@@ -281,7 +261,7 @@ def ia_docs():
 
     if st.button("Generate vector database"):
         if uploaded_files:
-            vector_db, collection_name, status = initialize_database(uploaded_files, chunk_size, chunk_overlap)
+            vector_db = initialize_database(uploaded_files, chunk_size, chunk_overlap)
             st.success("Vector database created successfully!")
 
             # Inicialização do LLM chain
