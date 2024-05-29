@@ -5,4 +5,13 @@ langchain_core==0.2.0
 Requests==2.31.0
 duckduckgo-search
 
+pydantic
+transformers
+torch
+unidecode
+faiss-cpu
+gradio
+huggingface-hub
+
+
 
