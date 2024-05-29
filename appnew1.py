@@ -201,8 +201,7 @@ def ia_docs():
     # Função para carregar e processar o documento PDF
     def load_doc(list_file_obj, chunk_size, chunk_overlap):
         loaders = []
-        for file in list_file_obj:
-            loaders.append(PyPDFLoader(file))
+        loaders = [PyPDFLoader(x) for x in list_file_path]
         pages = []
         for loader in loaders:
             pages.extend(loader.load())
@@ -258,7 +257,15 @@ def ia_docs():
     uploaded_files = st.file_uploader("Upload your PDF documents (single or multiple)", type="pdf", accept_multiple_files=True)
     chunk_size = st.slider("Chunk size", 100, 1000, 600, 20)
     chunk_overlap = st.slider("Chunk overlap", 10, 200, 40, 10)
-
+    # Initialize database
+    def initialize_database(list_file_obj, progress=gr.Progress()):
+        # Create a list of documents (when valid)
+        list_file_path = [x.name for x in list_file_obj if x is not None]
+        # Load document and create splits
+        doc_splits = load_doc(list_file_path)
+        # Create or load vector database
+        vector_db = create_db(doc_splits)
+        return vector_db, "Database created!"
     if st.button("Generate vector database"):
         if uploaded_files:
             vector_db = initialize_database(uploaded_files, chunk_size, chunk_overlap)
