@@ -200,16 +200,13 @@ def ia_docs():
     
     # Função para carregar e processar o documento PDF
     def load_doc(list_file_path):
-        # Processing for one document only
-        # loader = PyPDFLoader(file_path)
-        # pages = loader.load()
         loaders = [PyPDFLoader(x) for x in list_file_path]
         pages = []
         for loader in loaders:
             pages.extend(loader.load())
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size = 1024, 
-            chunk_overlap = 64 
+            chunk_size=600, 
+            chunk_overlap=40
         )  
         doc_splits = text_splitter.split_documents(pages)
         return doc_splits
@@ -222,12 +219,13 @@ def ia_docs():
 
     # Função para inicializar a base de dados vetorial
     def initialize_database(list_file_obj):
-        doc_splits = load_doc(list_file_obj, chunk_size=600, chunk_overlap=40)
+        list_file_path = [x.name for x in list_file_obj]
+        doc_splits = load_doc(list_file_path)
         vector_db = create_db(doc_splits)
         return vector_db
 
     # Função para inicializar o LLM chain usando Mistral v0.3 com a API da Hugging Face
-    def initialize_llmchain(llm_model, temperature, max_tokens, top_k, vector_db, progress=st.progress):
+    def initialize_llmchain(llm_model, temperature, max_tokens, top_k, vector_db, progress):
         progress(0.1, "Initializing HF tokenizer...")
         progress(0.5, "Initializing HF Hub...")
 
@@ -258,140 +256,22 @@ def ia_docs():
         progress(0.9, "Done!")
         return qa_chain
 
-    # Initialize database
-def initialize_database(list_file_obj, progress=gr.Progress()):
-    # Create a list of documents (when valid)
-    list_file_path = [x.name for x in list_file_obj if x is not None]
-    # Load document and create splits
-    doc_splits = load_doc(list_file_path)
-    # Create or load vector database
-    vector_db = create_db(doc_splits)
-    return vector_db, "Database created!"
+    # Inicialização dos elementos de interface para upload e processamento de documentos PDF
+    uploaded_files = st.file_uploader("Upload your PDF documents (single or multiple)", type="pdf", accept_multiple_files=True)
 
-# Initialize LLM
-def initialize_LLM(llm_option, llm_temperature, max_tokens, top_k, vector_db, progress=gr.Progress()):
-    # print("llm_option",llm_option)
-    llm_name = list_llm[llm_option]
-    print("llm_name: ",llm_name)
-    qa_chain = initialize_llmchain(llm_name, llm_temperature, max_tokens, top_k, vector_db, progress)
-    return qa_chain, "QA chain initialized. Chatbot is ready!"
+    if st.button("Generate vector database"):
+        if uploaded_files:
+            vector_db = initialize_database(uploaded_files)
+            st.success("Vector database created successfully!")
 
+            # Inicialização do LLM chain
+            llm_option = 1  # Índice para Mistral v0.3
+            llm_temperature = 0.7
+            max_tokens = 1024
+            top_k = 3
 
-def format_chat_history(message, chat_history):
-    formatted_chat_history = []
-    for user_message, bot_message in chat_history:
-        formatted_chat_history.append(f"User: {user_message}")
-        formatted_chat_history.append(f"Assistant: {bot_message}")
-    return formatted_chat_history
-    
-
-def conversation(qa_chain, message, history):
-    formatted_chat_history = format_chat_history(message, history)
-    # Generate response using QA chain
-    response = qa_chain.invoke({"question": message, "chat_history": formatted_chat_history})
-    response_answer = response["answer"]
-    if response_answer.find("Helpful Answer:") != -1:
-        response_answer = response_answer.split("Helpful Answer:")[-1]
-    response_sources = response["source_documents"]
-    response_source1 = response_sources[0].page_content.strip()
-    response_source2 = response_sources[1].page_content.strip()
-    response_source3 = response_sources[2].page_content.strip()
-    # Langchain sources are zero-based
-    response_source1_page = response_sources[0].metadata["page"] + 1
-    response_source2_page = response_sources[1].metadata["page"] + 1
-    response_source3_page = response_sources[2].metadata["page"] + 1
-    # Append user message and response to chat history
-    new_history = history + [(message, response_answer)]
-    return qa_chain, gr.update(value=""), new_history, response_source1, response_source1_page, response_source2, response_source2_page, response_source3, response_source3_page
-    
-
-def upload_file(file_obj):
-    list_file_path = []
-    for idx, file in enumerate(file_obj):
-        file_path = file_obj.name
-        list_file_path.append(file_path)
-    return list_file_path
-
-
-def demo():
-    with gr.Blocks(theme=gr.themes.Default(primary_hue="sky")) as demo:
-        vector_db = gr.State()
-        qa_chain = gr.State()
-        gr.HTML("<center><h1>RAG PDF chatbot</h1><center>")
-        gr.Markdown("""<b>Query your PDF documents!</b> This AI agent is designed to perform retrieval augmented generation (RAG) on PDF documents. The app is hosted on Hugging Face Hub for the sole purpose of demonstration. \
-        <b>Please do not upload confidential documents.</b>
-        """)
-        with gr.Row():
-            with gr.Column(scale = 86):
-                gr.Markdown("<b>Step 1 - Upload PDF documents and Initialize RAG pipeline</b>")
-                with gr.Row():
-                    document = gr.Files(height=300, file_count="multiple", file_types=["pdf"], interactive=True, label="Upload PDF documents")
-                with gr.Row():
-                    db_btn = gr.Button("Create vector database")
-                with gr.Row():
-                        db_progress = gr.Textbox(value="Not initialized", show_label=False) # label="Vector database status", 
-                gr.Markdown("<style>body { font-size: 16px; }</style><b>Select Large Language Model (LLM) and input parameters</b>")
-                with gr.Row():
-                    llm_btn = gr.Radio(list_llm_simple, label="Available LLMs", value = list_llm_simple[0], type="index") # info="Select LLM", show_label=False
-                with gr.Row():
-                    with gr.Accordion("LLM input parameters", open=False):
-                        with gr.Row():
-                            slider_temperature = gr.Slider(minimum = 0.01, maximum = 1.0, value=0.5, step=0.1, label="Temperature", info="Controls randomness in token generation", interactive=True)
-                        with gr.Row():
-                            slider_maxtokens = gr.Slider(minimum = 128, maximum = 9192, value=4096, step=128, label="Max New Tokens", info="Maximum number of tokens to be generated",interactive=True)
-                        with gr.Row():
-                                slider_topk = gr.Slider(minimum = 1, maximum = 10, value=3, step=1, label="top-k", info="Number of tokens to select the next token from", interactive=True)
-                with gr.Row():
-                    qachain_btn = gr.Button("Initialize Question Answering Chatbot")
-                with gr.Row():
-                        llm_progress = gr.Textbox(value="Not initialized", show_label=False) # label="Chatbot status", 
-
-            with gr.Column(scale = 200):
-                gr.Markdown("<b>Step 2 - Chat with your Document</b>")
-                chatbot = gr.Chatbot(height=505)
-                with gr.Accordion("Relevent context from the source document", open=False):
-                    with gr.Row():
-                        doc_source1 = gr.Textbox(label="Reference 1", lines=2, container=True, scale=20)
-                        source1_page = gr.Number(label="Page", scale=1)
-                    with gr.Row():
-                        doc_source2 = gr.Textbox(label="Reference 2", lines=2, container=True, scale=20)
-                        source2_page = gr.Number(label="Page", scale=1)
-                    with gr.Row():
-                        doc_source3 = gr.Textbox(label="Reference 3", lines=2, container=True, scale=20)
-                        source3_page = gr.Number(label="Page", scale=1)
-                with gr.Row():
-                    msg = gr.Textbox(placeholder="Ask a question", container=True)
-                with gr.Row():
-                    submit_btn = gr.Button("Submit")
-                    clear_btn = gr.ClearButton([msg, chatbot], value="Clear")
-            
-        # Preprocessing events
-        db_btn.click(initialize_database, \
-            inputs=[document], \
-            outputs=[vector_db, db_progress])
-        qachain_btn.click(initialize_LLM, \
-            inputs=[llm_btn, slider_temperature, slider_maxtokens, slider_topk, vector_db], \
-            outputs=[qa_chain, llm_progress]).then(lambda:[None,"",0,"",0,"",0], \
-            inputs=None, \
-            outputs=[chatbot, doc_source1, source1_page, doc_source2, source2_page, doc_source3, source3_page], \
-            queue=False)
-
-        # Chatbot events
-        msg.submit(conversation, \
-            inputs=[qa_chain, msg, chatbot], \
-            outputs=[qa_chain, msg, chatbot, doc_source1, source1_page, doc_source2, source2_page, doc_source3, source3_page], \
-            queue=False)
-        submit_btn.click(conversation, \
-            inputs=[qa_chain, msg, chatbot], \
-            outputs=[qa_chain, msg, chatbot, doc_source1, source1_page, doc_source2, source2_page, doc_source3, source3_page], \
-            queue=False)
-        clear_btn.click(lambda:[None,"",0,"",0,"",0], \
-            inputs=None, \
-            outputs=[chatbot, doc_source1, source1_page, doc_source2, source2_page, doc_source3, source3_page], \
-            queue=False)
-    demo.queue().launch(debug=True)
-
-
+            qa_chain = initialize_llmchain("mistralai/Mistral-7B-Instruct-v0.3", llm_temperature, max_tokens, top_k, vector_db, st.progress)
+            st.success("LLM chain initialized successfully!")
 
 # Lógica para escolher a função baseada na opção selecionada
 if option == "IA - CHAT":
@@ -401,3 +281,4 @@ elif option == "IA - Docs":
 
 if __name__ == "__main__":
     demo()
+
