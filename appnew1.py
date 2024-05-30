@@ -310,6 +310,84 @@ def ia_docs():
             file_path = file.name
             list_file_path.append(file_path)
         return list_file_path
+    def demo():
+    with gr.Blocks(theme=gr.themes.Default(primary_hue="sky")) as demo:
+        vector_db = gr.State()
+        qa_chain = gr.State()
+        gr.HTML("<center><h1>RAG PDF chatbot</h1><center>")
+        gr.Markdown("""<b>Query your PDF documents!</b> This AI agent is designed to perform retrieval augmented generation (RAG) on PDF documents. The app is hosted on Hugging Face Hub for the sole purpose of demonstration. \
+        <b>Please do not upload confidential documents.</b>
+        """)
+        with gr.Row():
+            with gr.Column(scale = 86):
+                gr.Markdown("<b>Step 1 - Upload PDF documents and Initialize RAG pipeline</b>")
+                with gr.Row():
+                    document = gr.Files(height=300, file_count="multiple", file_types=["pdf"], interactive=True, label="Upload PDF documents")
+                with gr.Row():
+                    db_btn = gr.Button("Create vector database")
+                with gr.Row():
+                        db_progress = gr.Textbox(value="Not initialized", show_label=False) # label="Vector database status", 
+                gr.Markdown("<style>body { font-size: 16px; }</style><b>Select Large Language Model (LLM) and input parameters</b>")
+                with gr.Row():
+                    llm_btn = gr.Radio(list_llm_simple, label="Available LLMs", value = list_llm_simple[0], type="index") # info="Select LLM", show_label=False
+                with gr.Row():
+                    with gr.Accordion("LLM input parameters", open=False):
+                        with gr.Row():
+                            slider_temperature = gr.Slider(minimum = 0.01, maximum = 1.0, value=0.5, step=0.1, label="Temperature", info="Controls randomness in token generation", interactive=True)
+                        with gr.Row():
+                            slider_maxtokens = gr.Slider(minimum = 128, maximum = 9192, value=4096, step=128, label="Max New Tokens", info="Maximum number of tokens to be generated",interactive=True)
+                        with gr.Row():
+                                slider_topk = gr.Slider(minimum = 1, maximum = 10, value=3, step=1, label="top-k", info="Number of tokens to select the next token from", interactive=True)
+                with gr.Row():
+                    qachain_btn = gr.Button("Initialize Question Answering Chatbot")
+                with gr.Row():
+                        llm_progress = gr.Textbox(value="Not initialized", show_label=False) # label="Chatbot status", 
+
+            with gr.Column(scale = 200):
+                gr.Markdown("<b>Step 2 - Chat with your Document</b>")
+                chatbot = gr.Chatbot(height=505)
+                with gr.Accordion("Relevent context from the source document", open=False):
+                    with gr.Row():
+                        doc_source1 = gr.Textbox(label="Reference 1", lines=2, container=True, scale=20)
+                        source1_page = gr.Number(label="Page", scale=1)
+                    with gr.Row():
+                        doc_source2 = gr.Textbox(label="Reference 2", lines=2, container=True, scale=20)
+                        source2_page = gr.Number(label="Page", scale=1)
+                    with gr.Row():
+                        doc_source3 = gr.Textbox(label="Reference 3", lines=2, container=True, scale=20)
+                        source3_page = gr.Number(label="Page", scale=1)
+                with gr.Row():
+                    msg = gr.Textbox(placeholder="Ask a question", container=True)
+                with gr.Row():
+                    submit_btn = gr.Button("Submit")
+                    clear_btn = gr.ClearButton([msg, chatbot], value="Clear")
+            
+        # Preprocessing events
+        db_btn.click(initialize_database, \
+            inputs=[document], \
+            outputs=[vector_db, db_progress])
+        qachain_btn.click(initialize_LLM, \
+            inputs=[llm_btn, slider_temperature, slider_maxtokens, slider_topk, vector_db], \
+            outputs=[qa_chain, llm_progress]).then(lambda:[None,"",0,"",0,"",0], \
+            inputs=None, \
+            outputs=[chatbot, doc_source1, source1_page, doc_source2, source2_page, doc_source3, source3_page], \
+            queue=False)
+
+        # Chatbot events
+        msg.submit(conversation, \
+            inputs=[qa_chain, msg, chatbot], \
+            outputs=[qa_chain, msg, chatbot, doc_source1, source1_page, doc_source2, source2_page, doc_source3, source3_page], \
+            queue=False)
+        submit_btn.click(conversation, \
+            inputs=[qa_chain, msg, chatbot], \
+            outputs=[qa_chain, msg, chatbot, doc_source1, source1_page, doc_source2, source2_page, doc_source3, source3_page], \
+            queue=False)
+        clear_btn.click(lambda:[None,"",0,"",0,"",0], \
+            inputs=None, \
+            outputs=[chatbot, doc_source1, source1_page, doc_source2, source2_page, doc_source3, source3_page], \
+            queue=False)
+    demo.queue().launch(debug=True)
+
 
 
 # Lógica para escolher a função baseada na opção selecionada
