@@ -279,6 +279,4 @@ if option == "IA - CHAT":
 elif option == "IA - Docs":
     ia_docs()
 
-if __name__ == "__main__":
-    demo()
 
