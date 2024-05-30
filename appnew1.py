@@ -199,52 +199,58 @@ def ia_docs():
     st.write("Carregue e processe seus documentos PDF.")
     
     # Função para carregar e processar o documento PDF
+    list_llm = ["mistralai/Mistral-7B-Instruct-v0.2", "mistralai/Mistral-7B-Instruct-v0.3"]  
+    list_llm_simple = [os.path.basename(llm) for llm in list_llm]
+    
+    # Load and split PDF document
     def load_doc(list_file_path):
+        # Processing for one document only
+        # loader = PyPDFLoader(file_path)
+        # pages = loader.load()
         loaders = [PyPDFLoader(x) for x in list_file_path]
         pages = []
         for loader in loaders:
             pages.extend(loader.load())
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=600, 
-            chunk_overlap=40
+            chunk_size = 1024, 
+            chunk_overlap = 64 
         )  
         doc_splits = text_splitter.split_documents(pages)
         return doc_splits
-
-    # Função para criar o banco de dados vetorial
+    
+    # Create vector database
     def create_db(splits):
         embeddings = HuggingFaceEmbeddings()
         vectordb = FAISS.from_documents(splits, embeddings)
         return vectordb
-
-    # Função para inicializar a base de dados vetorial
-    def initialize_database(list_file_obj):
-        list_file_path = [x.name for x in list_file_obj]
-        doc_splits = load_doc(list_file_path)
-        vector_db = create_db(doc_splits)
-        return vector_db
-
-    # Função para inicializar o LLM chain usando Mistral v0.3 com a API da Hugging Face
-    def initialize_llmchain(llm_model, temperature, max_tokens, top_k, vector_db, progress):
-        progress(0.1, "Initializing HF tokenizer...")
-        progress(0.5, "Initializing HF Hub...")
-
-        llm = HuggingFaceEndpoint(
-            repo_id=llm_model,
-            huggingfacehub_api_token=hf_api_key,
-            temperature=temperature,
-            max_new_tokens=max_tokens,
-            top_k=top_k,
-        )
-
-        progress(0.75, "Defining buffer memory...")
+    
+    
+    # Initialize langchain LLM chain
+    def initialize_llmchain(llm_model, temperature, max_tokens, top_k, vector_db, progress=gr.Progress()):
+        if llm_model == "mistralai/Mistral-7B-Instruct-v0.2":
+            llm = HuggingFaceEndpoint(
+                repo_id=llm_model,
+                huggingfacehub_api_token = api_token,
+                temperature = temperature,
+                max_new_tokens = max_tokens,
+                top_k = top_k,
+            )
+        else:
+            llm = HuggingFaceEndpoint(
+                huggingfacehub_api_token = api_token,
+                repo_id=llm_model, 
+                temperature = temperature,
+                max_new_tokens = max_tokens,
+                top_k = top_k,
+            )
+        
         memory = ConversationBufferMemory(
             memory_key="chat_history",
             output_key='answer',
             return_messages=True
         )
-        retriever = vector_db.as_retriever()
-        progress(0.8, "Defining retrieval chain...")
+    
+        retriever=vector_db.as_retriever()
         qa_chain = ConversationalRetrievalChain.from_llm(
             llm,
             retriever=retriever,
@@ -253,25 +259,9 @@ def ia_docs():
             return_source_documents=True,
             verbose=False,
         )
-        progress(0.9, "Done!")
         return qa_chain
 
-    # Inicialização dos elementos de interface para upload e processamento de documentos PDF
-    uploaded_files = st.file_uploader("Upload your PDF documents (single or multiple)", type="pdf", accept_multiple_files=True)
 
-    if st.button("Generate vector database"):
-        if uploaded_files:
-            vector_db = initialize_database(uploaded_files)
-            st.success("Vector database created successfully!")
-
-            # Inicialização do LLM chain
-            llm_option = 1  # Índice para Mistral v0.3
-            llm_temperature = 0.7
-            max_tokens = 1024
-            top_k = 3
-
-            qa_chain = initialize_llmchain("mistralai/Mistral-7B-Instruct-v0.3", llm_temperature, max_tokens, top_k, vector_db, st.progress)
-            st.success("LLM chain initialized successfully!")
 
 # Lógica para escolher a função baseada na opção selecionada
 if option == "IA - CHAT":
