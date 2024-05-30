@@ -39,7 +39,6 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains import ConversationalRetrievalChain
 from langchain_community.embeddings import HuggingFaceEmbeddings 
 from langchain.chains import ConversationChain
-from langchain.memory import ConversationBufferMemory
 from langchain_community.llms import HuggingFaceEndpoint
 
 # Configuração do título da página
@@ -175,7 +174,7 @@ def ia_chat():
             save_data(json_file_path, chat_history)
 
             # Exibir a resposta do assistente
-            with st.chat_message("🤖"):
+            with st.chat_message("ai"):
                 st.write("lucIAna")  # Adiciona o nome abaixo do avatar
                 st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)  
                 response = executor(prompt, callbacks=[st_cb])
@@ -190,7 +189,7 @@ def ia_chat():
             chat_history.append({"role": "ai", "content": response})
             save_data(json_file_path, chat_history)
             
-            with st.chat_message("🤖"):
+            with st.chat_message("ai"):
                 st.write("lucIAna")  # Adiciona o nome abaixo do avatar
                 st.write(response)
 
@@ -226,18 +225,18 @@ def ia_docs():
     
     
     # Initialize langchain LLM chain
-    def initialize_llmchain(llm_model, temperature, max_tokens, top_k, vector_db, progress=gr.Progress()):
+    def initialize_llmchain(llm_model, temperature, max_tokens, top_k, vector_db):
         if llm_model == "mistralai/Mistral-7B-Instruct-v0.2":
             llm = HuggingFaceEndpoint(
                 repo_id=llm_model,
-                huggingfacehub_api_token = api_token,
+                huggingfacehub_api_token = hf_api_key,
                 temperature = temperature,
                 max_new_tokens = max_tokens,
                 top_k = top_k,
             )
         else:
             llm = HuggingFaceEndpoint(
-                huggingfacehub_api_token = api_token,
+                huggingfacehub_api_token = hf_api_key,
                 repo_id=llm_model, 
                 temperature = temperature,
                 max_new_tokens = max_tokens,
@@ -262,7 +261,7 @@ def ia_docs():
         return qa_chain
 
     # Initialize database
-    def initialize_database(list_file_obj, progress=gr.Progress()):
+    def initialize_database(list_file_obj):
         # Create a list of documents (when valid)
         list_file_path = [x.name for x in list_file_obj if x is not None]
         # Load document and create splits
@@ -272,11 +271,9 @@ def ia_docs():
         return vector_db, "Database created!"
     
     # Initialize LLM
-    def initialize_LLM(llm_option, llm_temperature, max_tokens, top_k, vector_db, progress=gr.Progress()):
-        # print("llm_option",llm_option)
+    def initialize_LLM(llm_option, llm_temperature, max_tokens, top_k, vector_db):
         llm_name = list_llm[llm_option]
-        print("llm_name: ",llm_name)
-        qa_chain = initialize_llmchain(llm_name, llm_temperature, max_tokens, top_k, vector_db, progress)
+        qa_chain = initialize_llmchain(llm_name, llm_temperature, max_tokens, top_k, vector_db)
         return qa_chain, "QA chain initialized. Chatbot is ready!"
     
     
@@ -293,7 +290,7 @@ def ia_docs():
         # Generate response using QA chain
         response = qa_chain.invoke({"question": message, "chat_history": formatted_chat_history})
         response_answer = response["answer"]
-        if response_answer.find("Helpful Answer:") != -1:
+        if "Helpful Answer:" in response_answer:
             response_answer = response_answer.split("Helpful Answer:")[-1]
         response_sources = response["source_documents"]
         response_source1 = response_sources[0].page_content.strip()
@@ -305,16 +302,14 @@ def ia_docs():
         response_source3_page = response_sources[2].metadata["page"] + 1
         # Append user message and response to chat history
         new_history = history + [(message, response_answer)]
-        return qa_chain, gr.update(value=""), new_history, response_source1, response_source1_page, response_source2, response_source2_page, response_source3, response_source3_page
+        return qa_chain, None, new_history, response_source1, response_source1_page, response_source2, response_source2_page, response_source3, response_source3_page
         
-
-def upload_file(file_obj):
-    list_file_path = []
-    for idx, file in enumerate(file_obj):
-        file_path = file_obj.name
-        list_file_path.append(file_path)
-    return list_file_path
-
+    def upload_file(file_obj):
+        list_file_path = []
+        for idx, file in enumerate(file_obj):
+            file_path = file.name
+            list_file_path.append(file_path)
+        return list_file_path
 
 
 # Lógica para escolher a função baseada na opção selecionada
@@ -322,5 +317,4 @@ if option == "IA - CHAT":
     ia_chat()
 elif option == "IA - Docs":
     ia_docs()
-
 
