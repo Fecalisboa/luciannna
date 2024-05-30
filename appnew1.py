@@ -261,6 +261,60 @@ def ia_docs():
         )
         return qa_chain
 
+    # Initialize database
+    def initialize_database(list_file_obj, progress=gr.Progress()):
+        # Create a list of documents (when valid)
+        list_file_path = [x.name for x in list_file_obj if x is not None]
+        # Load document and create splits
+        doc_splits = load_doc(list_file_path)
+        # Create or load vector database
+        vector_db = create_db(doc_splits)
+        return vector_db, "Database created!"
+    
+    # Initialize LLM
+    def initialize_LLM(llm_option, llm_temperature, max_tokens, top_k, vector_db, progress=gr.Progress()):
+        # print("llm_option",llm_option)
+        llm_name = list_llm[llm_option]
+        print("llm_name: ",llm_name)
+        qa_chain = initialize_llmchain(llm_name, llm_temperature, max_tokens, top_k, vector_db, progress)
+        return qa_chain, "QA chain initialized. Chatbot is ready!"
+    
+    
+    def format_chat_history(message, chat_history):
+        formatted_chat_history = []
+        for user_message, bot_message in chat_history:
+            formatted_chat_history.append(f"User: {user_message}")
+            formatted_chat_history.append(f"Assistant: {bot_message}")
+        return formatted_chat_history
+        
+    
+    def conversation(qa_chain, message, history):
+        formatted_chat_history = format_chat_history(message, history)
+        # Generate response using QA chain
+        response = qa_chain.invoke({"question": message, "chat_history": formatted_chat_history})
+        response_answer = response["answer"]
+        if response_answer.find("Helpful Answer:") != -1:
+            response_answer = response_answer.split("Helpful Answer:")[-1]
+        response_sources = response["source_documents"]
+        response_source1 = response_sources[0].page_content.strip()
+        response_source2 = response_sources[1].page_content.strip()
+        response_source3 = response_sources[2].page_content.strip()
+        # Langchain sources are zero-based
+        response_source1_page = response_sources[0].metadata["page"] + 1
+        response_source2_page = response_sources[1].metadata["page"] + 1
+        response_source3_page = response_sources[2].metadata["page"] + 1
+        # Append user message and response to chat history
+        new_history = history + [(message, response_answer)]
+        return qa_chain, gr.update(value=""), new_history, response_source1, response_source1_page, response_source2, response_source2_page, response_source3, response_source3_page
+        
+
+def upload_file(file_obj):
+    list_file_path = []
+    for idx, file in enumerate(file_obj):
+        file_path = file_obj.name
+        list_file_path.append(file_path)
+    return list_file_path
+
 
 
 # Lógica para escolher a função baseada na opção selecionada
